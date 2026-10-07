@@ -8,6 +8,8 @@ import java.nio.file.Files
 
 object Config {
     private const val DEFAULT_URL = "https://f7non.tr4k41s.workers.dev"
+    // Earlier versions saved the default URL to the config; those values are replaced.
+    private val OLD_URLS = setOf("https://ticket-bot.tr4k41s.workers.dev")
     private val file = FabricLoader.getInstance().configDir.resolve("dodgelist.json")
 
     var url = DEFAULT_URL
@@ -26,7 +28,10 @@ object Config {
         try {
             if (Files.exists(file)) {
                 val json = JsonParser.parseString(Files.readString(file)).asJsonObject
-                json.get("url")?.asString?.takeIf { it.isNotBlank() }?.let { url = it.removeSuffix("/").removeSuffix("/dodgelist") }
+                json.get("url")?.asString
+                    ?.removeSuffix("/")?.removeSuffix("/dodgelist")
+                    ?.takeIf { it.isNotBlank() && it !in OLD_URLS }
+                    ?.let { url = it }
                 json.get("autokick")?.asBoolean?.let { autokick = it }
                 json.get("autokickShares")?.asBoolean?.let { autokickShares = it }
                 json.get("code")?.asString?.let { code = it }
