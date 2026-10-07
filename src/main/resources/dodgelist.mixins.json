@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "dev.tr4k41s.dodgelist.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "PreparedTextBuilderMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
