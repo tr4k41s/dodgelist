@@ -21,6 +21,8 @@ object PartyWatcher {
         Regex("""^Party (?:Leader|Moderators|Members): (.+)$"""),
     )
     private val listedName = Regex("""^$NAME$""")
+    // One member per line in /p list: "● [MVP+] Name (Leader)"
+    private val memberLine = Regex("""^[●•] $NAME(?: \((?:Leader|Moderator)\))?$""")
     private val partyEnded = listOf(
         Regex("""^You left the party\.$"""),
         Regex("""^You have been kicked from the party by .+$"""),
@@ -58,7 +60,7 @@ object PartyWatcher {
             return
         }
         joinedPartyFinder.matchEntire(line)?.let {
-            check(it.groupValues[1], uninvited = true)
+            if (isSelf(it.groupValues[1])) joinedNewParty() else check(it.groupValues[1], uninvited = true)
             return
         }
         joinedParty.matchEntire(line)?.let {
@@ -68,7 +70,11 @@ object PartyWatcher {
             return
         }
         youJoined.matchEntire(line)?.let {
-            reset()
+            joinedNewParty()
+            check(it.groupValues[1], uninvited = false)
+            return
+        }
+        memberLine.matchEntire(line)?.let {
             check(it.groupValues[1], uninvited = false)
             return
         }
@@ -79,9 +85,19 @@ object PartyWatcher {
         }
     }
 
+    private fun isSelf(name: String) = name.equals(Minecraft.getInstance().user.name, ignoreCase = true)
+
+    // Joining someone else's party doesn't announce who's already in it, so ask for the list.
+    private fun joinedNewParty() {
+        reset()
+        ListStore.scheduler.schedule({
+            Minecraft.getInstance().execute { Minecraft.getInstance().connection?.sendCommand("p list") }
+        }, 1, TimeUnit.SECONDS)
+    }
+
     // Only players who got in without an invite (Party Finder, open party) are auto-kicked.
     private fun check(name: String, uninvited: Boolean) {
-        if (name.equals(Minecraft.getInstance().user.name, ignoreCase = true)) return
+        if (isSelf(name)) return
         Profiles.resolve(name).thenAccept { uuid ->
             val id = uuid ?: return@thenAccept
             val entries = ListStore[id]
