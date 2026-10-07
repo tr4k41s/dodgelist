@@ -13,6 +13,24 @@ import java.util.concurrent.ConcurrentHashMap
 
 object Profiles {
     private val cache = ConcurrentHashMap<String, Optional<UUID>>()
+    private val names = ConcurrentHashMap<UUID, String>()
+
+    fun currentName(uuid: UUID, fallback: String): CompletableFuture<String> {
+        names[uuid]?.let { return CompletableFuture.completedFuture(it) }
+        val id = uuid.toString().replace("-", "")
+        val request = HttpRequest.newBuilder(URI.create("https://sessionserver.mojang.com/session/minecraft/profile/$id"))
+            .timeout(Duration.ofSeconds(10))
+            .GET()
+            .build()
+        return ListStore.http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply { response ->
+                if (response.statusCode() != 200) return@thenApply fallback
+                val name = JsonParser.parseString(response.body()).asJsonObject.get("name")?.asString ?: fallback
+                names[uuid] = name
+                name
+            }
+            .exceptionally { fallback }
+    }
 
     // Must be called on the client thread, since it reads the tab list.
     fun resolve(name: String): CompletableFuture<UUID?> {

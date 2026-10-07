@@ -7,7 +7,9 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
 data class Entry(val uuid: UUID, val name: String, val reason: String, val category: String, val share: Boolean) {
@@ -20,33 +22,37 @@ object ListStore {
     @Volatile
     private var entries: Map<UUID, List<Entry>> = emptyMap()
 
-    private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
-        Thread(r, "DodgeList refresh").apply { isDaemon = true }
+    val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "DodgeList").apply { isDaemon = true }
     }
 
     fun start() {
-        scheduler.scheduleAtFixedRate(::refresh, 0, 5, TimeUnit.MINUTES)
+        scheduler.scheduleAtFixedRate({ refresh() }, 0, 5, TimeUnit.MINUTES)
     }
 
     operator fun get(uuid: UUID): List<Entry> = entries[uuid].orEmpty()
 
-    fun refresh() {
-        val request = HttpRequest.newBuilder(URI.create(Config.url))
+    fun inCategory(category: String): List<Entry> = entries.values.flatten().filter { it.category == category }
+
+    fun refresh(): CompletableFuture<Boolean> {
+        val request = HttpRequest.newBuilder(URI.create(Config.listUrl))
             .timeout(Duration.ofSeconds(15))
             .header("User-Agent", "dodgelist")
             .GET()
             .build()
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .thenAccept { response ->
+        return http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply { response ->
                 if (response.statusCode() == 200) {
                     entries = parse(response.body())
+                    true
                 } else {
                     DodgeList.log.warn("Dodge list request returned {}", response.statusCode())
+                    false
                 }
             }
             .exceptionally { e ->
                 DodgeList.log.warn("Couldn't fetch the dodge list: {}", e.message)
-                null
+                false
             }
     }
 

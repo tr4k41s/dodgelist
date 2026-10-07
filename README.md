@@ -1,7 +1,7 @@
 # DodgeList
 
-Fabric client mod for Minecraft 26.1.2. Warns you when a player on the dodge list joins your party
-or is already in a party you join.
+Fabric client mod for Minecraft 26.1.2, made for Hypixel parties. Warns you when a player on the
+dodge list joins your party or is already in a party you join, and can kick them automatically.
 
 ## Install
 
@@ -11,17 +11,29 @@ Put these in your `mods` folder:
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 - [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin)
 
+## Commands
+
+| Command | |
+|---|---|
+| `/dodgelist f7` / `/dodgelist m7` | Show that list, with current names |
+| `/dodgelist reload` | Download the list again |
+| `/dodgelist autokick` | Toggle kicking listed players who join your party |
+| `/dodgelist autokick share` | Toggle whether account shares are kicked too |
+| `/dodgelist report <f7\|m7> <ign> <reason>` | Report a player; staff get a thread on Discord |
+
+Autokick only works when you can kick (party leader or moderator).
+
 ## How it works
 
 - The list is downloaded on startup, whenever you join a server, and every 5 minutes.
-- Party messages (Party Finder joins, `joined the party`, `You'll be partying with`, `/p list`) are
-  checked against the list by UUID, so name changes don't matter. The warning shows the player's
-  current name.
+- Hypixel party messages (Party Finder joins, `joined the party`, `You'll be partying with`,
+  `/p list`) are checked against the list by UUID, so name changes don't matter.
 - The warning says which list (F7, M7) the player is on, and whether they were marked as an
   account share.
 - Each player only triggers a warning once every 10 minutes.
+- Reports are sent with a Mojang session check so the bot knows which account sent them.
 
-The list URL is set in `config/dodgelist.json`.
+Settings are saved in `config/dodgelist.json`.
 
 ## Build
 

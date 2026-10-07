@@ -7,13 +7,18 @@ import net.minecraft.network.chat.Component
 import net.minecraft.sounds.SoundEvents
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 object PartyWatcher {
     private const val NAME = """(?:\[[^\]]+\] )?(\w{1,16})"""
 
-    private val singleName = listOf(
+    // Someone joined the party you're in, so they can be kicked.
+    private val joined = listOf(
         Regex("""^Party Finder > $NAME joined the (?:dungeon )?group!.*$"""),
         Regex("""^$NAME joined the party\.$"""),
+    )
+    // You joined someone else's party, or listed its members.
+    private val alreadyIn = listOf(
         Regex("""^You have joined $NAME's party!$"""),
     )
     private val nameLists = listOf(
@@ -27,40 +32,60 @@ object PartyWatcher {
 
     fun reset() = warned.clear()
 
+    // Hypixel wraps party messages in separator lines, all inside one chat message.
     fun onMessage(text: String) {
-        val names = mutableListOf<String>()
-        singleName.firstNotNullOfOrNull { it.matchEntire(text) }?.let { names += it.groupValues[1] }
-        nameLists.firstNotNullOfOrNull { it.matchEntire(text) }?.let { match ->
-            match.groupValues[1].split('●', ',')
-                .mapNotNull { listedName.matchEntire(it.trim())?.groupValues?.get(1) }
-                .forEach { names += it }
+        for (line in text.lines()) {
+            val trimmed = line.trim()
+            if (trimmed.isNotEmpty()) onLine(trimmed)
         }
-
-        val self = Minecraft.getInstance().user.name
-        names.filterNot { it.equals(self, ignoreCase = true) }.distinct().forEach(::check)
     }
 
-    private fun check(name: String) {
+    private fun onLine(line: String) {
+        joined.firstNotNullOfOrNull { it.matchEntire(line) }?.let {
+            check(it.groupValues[1], canKick = true)
+            return
+        }
+        alreadyIn.firstNotNullOfOrNull { it.matchEntire(line) }?.let {
+            check(it.groupValues[1], canKick = false)
+            return
+        }
+        nameLists.firstNotNullOfOrNull { it.matchEntire(line) }?.let { match ->
+            match.groupValues[1].split('●', ',')
+                .mapNotNull { listedName.matchEntire(it.trim())?.groupValues?.get(1) }
+                .forEach { check(it, canKick = false) }
+        }
+    }
+
+    private fun check(name: String, canKick: Boolean) {
+        if (name.equals(Minecraft.getInstance().user.name, ignoreCase = true)) return
         Profiles.resolve(name).thenAccept { uuid ->
             val id = uuid ?: return@thenAccept
             val entries = ListStore[id]
             if (entries.isEmpty()) return@thenAccept
+
+            val kick = canKick && Config.autokick && (Config.autokickShares || entries.any { !it.share })
+            if (kick) {
+                ListStore.scheduler.schedule({
+                    Minecraft.getInstance().execute { Minecraft.getInstance().connection?.sendCommand("p kick $name") }
+                }, 500, TimeUnit.MILLISECONDS)
+            }
+
             val now = System.currentTimeMillis()
             val last = warned[id]
-            if (last != null && now - last < REPEAT_AFTER_MS) return@thenAccept
+            if (!kick && last != null && now - last < REPEAT_AFTER_MS) return@thenAccept
             warned[id] = now
-            Minecraft.getInstance().execute { warn(name, entries) }
+            Minecraft.getInstance().execute { warn(name, entries, kick) }
         }
     }
 
-    private fun warn(name: String, entries: List<Entry>) {
+    private fun warn(name: String, entries: List<Entry>, kicked: Boolean) {
         val mc = Minecraft.getInstance()
         val onlyShares = entries.all { it.share }
         val color = if (onlyShares) ChatFormatting.YELLOW else ChatFormatting.RED
         val lists = entries.joinToString(", ") { if (it.share) "${it.label} (account share)" else it.label }
 
         val message = Component.empty()
-            .append(Component.literal("[DodgeList] ").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD))
+            .append(Messages.prefix())
             .append(Component.literal(name).withStyle(color, ChatFormatting.BOLD))
             .append(Component.literal(" is on the dodge list: $lists").withStyle(color))
         if (entries.any { it.share }) {
@@ -73,6 +98,7 @@ object PartyWatcher {
             val prefix = if (entries.size > 1) entry.label else "Reason"
             message.append(Component.literal("\n$prefix: ${entry.reason}").withStyle(ChatFormatting.GRAY))
         }
+        if (kicked) message.append(Component.literal("\nKicking them from the party.").withStyle(ChatFormatting.GREEN))
         mc.gui.chat.addClientSystemMessage(message)
 
         val subtitle = if (onlyShares) "account share (${entries.joinToString(", ") { it.label }})"

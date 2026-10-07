@@ -12,6 +12,7 @@ object DodgeList : ClientModInitializer {
     override fun onInitializeClient() {
         Config.load()
         ListStore.start()
+        Commands.register()
 
         ClientPlayConnectionEvents.JOIN.register { _, _, _ ->
             PartyWatcher.reset()
