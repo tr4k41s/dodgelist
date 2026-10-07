@@ -7,7 +7,7 @@ import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 
 object Config {
-    private const val DEFAULT_URL = "https://ticket-bot.tr4k41s.workers.dev"
+    private const val DEFAULT_URL = "https://f7non.tr4k41s.workers.dev"
     private val file = FabricLoader.getInstance().configDir.resolve("dodgelist.json")
 
     var url = DEFAULT_URL
