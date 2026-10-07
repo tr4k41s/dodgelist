@@ -3,24 +3,23 @@ package dev.tr4k41s.dodgelist
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import net.minecraft.ChatFormatting
-import net.minecraft.client.Minecraft
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
 object Reporter {
-    // The bot files the report under the Discord account verified with this username.
+    // The code from /modcode tells the bot which Discord account the report is from.
     fun report(category: String, ign: String, reason: String) {
         val body = JsonObject().apply {
             addProperty("category", category)
             addProperty("ign", ign)
             addProperty("reason", reason)
-            addProperty("reporter", Minecraft.getInstance().user.name)
         }
         val request = HttpRequest.newBuilder(URI.create(Config.reportUrl))
             .timeout(Duration.ofSeconds(30))
             .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer ${Config.code}")
             .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
             .build()
 

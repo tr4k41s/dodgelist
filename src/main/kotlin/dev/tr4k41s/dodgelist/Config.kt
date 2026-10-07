@@ -16,6 +16,8 @@ object Config {
         set(value) { field = value; save() }
     var autokickShares = false
         set(value) { field = value; save() }
+    var code = ""
+        set(value) { field = value; save() }
 
     val listUrl get() = "$url/dodgelist"
     val reportUrl get() = "$url/report"
@@ -27,6 +29,7 @@ object Config {
                 json.get("url")?.asString?.let { url = it.removeSuffix("/").removeSuffix("/dodgelist") }
                 json.get("autokick")?.asBoolean?.let { autokick = it }
                 json.get("autokickShares")?.asBoolean?.let { autokickShares = it }
+                json.get("code")?.asString?.let { code = it }
             }
             save()
         } catch (e: Exception) {
@@ -39,6 +42,7 @@ object Config {
             addProperty("url", url)
             addProperty("autokick", autokick)
             addProperty("autokickShares", autokickShares)
+            addProperty("code", code)
         }
         try {
             Files.writeString(file, GsonBuilder().setPrettyPrinting().create().toJson(json))
