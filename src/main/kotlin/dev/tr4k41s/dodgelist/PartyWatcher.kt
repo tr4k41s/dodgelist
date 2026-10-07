@@ -42,27 +42,43 @@ object PartyWatcher {
 
     private fun check(name: String) {
         Profiles.resolve(name).thenAccept { uuid ->
-            val entry = uuid?.let { ListStore[it] } ?: return@thenAccept
+            val id = uuid ?: return@thenAccept
+            val entries = ListStore[id]
+            if (entries.isEmpty()) return@thenAccept
             val now = System.currentTimeMillis()
-            val last = warned[entry.uuid]
+            val last = warned[id]
             if (last != null && now - last < REPEAT_AFTER_MS) return@thenAccept
-            warned[entry.uuid] = now
-            Minecraft.getInstance().execute { warn(name, entry) }
+            warned[id] = now
+            Minecraft.getInstance().execute { warn(name, entries) }
         }
     }
 
-    private fun warn(name: String, entry: Entry) {
+    private fun warn(name: String, entries: List<Entry>) {
         val mc = Minecraft.getInstance()
+        val onlyShares = entries.all { it.share }
+        val color = if (onlyShares) ChatFormatting.YELLOW else ChatFormatting.RED
+        val lists = entries.joinToString(", ") { if (it.share) "${it.label} (account share)" else it.label }
+
         val message = Component.empty()
             .append(Component.literal("[DodgeList] ").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD))
-            .append(Component.literal(name).withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
-            .append(Component.literal(" is on the dodge list!").withStyle(ChatFormatting.RED))
-        if (entry.reason.isNotBlank()) {
-            message.append(Component.literal("\nReason: ${entry.reason}").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(name).withStyle(color, ChatFormatting.BOLD))
+            .append(Component.literal(" is on the dodge list: $lists").withStyle(color))
+        if (entries.any { it.share }) {
+            message.append(
+                Component.literal("\nAccount share: the person playing may not be the one who was reported.")
+                    .withStyle(ChatFormatting.GOLD)
+            )
+        }
+        for (entry in entries.filter { it.reason.isNotBlank() }) {
+            val prefix = if (entries.size > 1) entry.label else "Reason"
+            message.append(Component.literal("\n$prefix: ${entry.reason}").withStyle(ChatFormatting.GRAY))
         }
         mc.gui.chat.addClientSystemMessage(message)
-        mc.gui.setTitle(Component.literal("⚠ $name").withStyle(ChatFormatting.RED))
-        mc.gui.setSubtitle(Component.literal("is on the dodge list").withStyle(ChatFormatting.GRAY))
+
+        val subtitle = if (onlyShares) "account share (${entries.joinToString(", ") { it.label }})"
+        else "on the dodge list ($lists)"
+        mc.gui.setTitle(Component.literal("⚠ $name").withStyle(color))
+        mc.gui.setSubtitle(Component.literal(subtitle).withStyle(ChatFormatting.GRAY))
         mc.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_PLING, 0.5f))
     }
 }

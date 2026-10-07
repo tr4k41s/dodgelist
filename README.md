@@ -17,6 +17,8 @@ Put these in your `mods` folder:
 - Party messages (Party Finder joins, `joined the party`, `You'll be partying with`, `/p list`) are
   checked against the list by UUID, so name changes don't matter. The warning shows the player's
   current name.
+- The warning says which list (F7, M7) the player is on, and whether they were marked as an
+  account share.
 - Each player only triggers a warning once every 10 minutes.
 
 The list URL is set in `config/dodgelist.json`.
