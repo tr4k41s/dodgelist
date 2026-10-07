@@ -20,7 +20,7 @@ Put these in your `mods` folder:
 | `/dodgelist autokick` | Toggle kicking listed players who join your party |
 | `/dodgelist autokick share` | Toggle whether account shares are kicked too |
 | `/dodgelist report <f7\|m7> <ign> <reason>` | Report a player; staff get a thread on Discord |
-| `/dodgelist link <code>` | Link your Discord account for reporting (code from `/modcode`) |
+| `/dodgelist link <code>` | Link your Discord account for reporting (code from `/link`) |
 
 Autokick only kicks players who join without an invite (Party Finder or an open party), and only
 works when you can kick (party leader or moderator). Invited players are announced but never kicked.
@@ -34,7 +34,7 @@ works when you can kick (party leader or moderator). Invited players are announc
   account share.
 - Each dodged player is announced once per party. Leaving, being kicked or the party disbanding
   starts a new party.
-- To report, verify in the Discord, run `/modcode` there and enter the command it gives you
+- To report, verify in the Discord, run `/link` there and enter the command it gives you
   (`/dodgelist link <code>`). Reports are filed under your Discord account. Keep the code private.
 
 Settings are saved in `config/dodgelist.json`.

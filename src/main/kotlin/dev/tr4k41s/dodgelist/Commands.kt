@@ -50,7 +50,7 @@ object Commands {
                                 if (!Regex("""\w{1,16}""").matches(ign)) {
                                     Messages.send("$ign isn't a valid username.", ChatFormatting.RED)
                                 } else if (Config.code.isBlank()) {
-                                    Messages.send("Link the mod first: run /modcode in the Discord.", ChatFormatting.RED)
+                                    Messages.send("Link the mod first: run /link in the Discord.", ChatFormatting.RED)
                                 } else {
                                     Reporter.report(category, ign, StringArgumentType.getString(ctx, "reason"))
                                 }
@@ -75,7 +75,7 @@ object Commands {
             "/dodgelist autokick" to "kick listed players who join your party (${onOff(Config.autokick)})",
             "/dodgelist autokick share" to "also kick account shares (${onOff(Config.autokickShares)})",
             "/dodgelist report <f7|m7> <ign> <reason>" to "report a player",
-            "/dodgelist link <code>" to "link your Discord (get a code with /modcode in the Discord)",
+            "/dodgelist link <code>" to "link your Discord (get a code with /link in the Discord)",
         )
         val message = Component.literal("Commands:").withStyle(ChatFormatting.GRAY)
         for ((command, description) in lines) {

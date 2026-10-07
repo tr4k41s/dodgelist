@@ -9,7 +9,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 
 object Reporter {
-    // The code from /modcode tells the bot which Discord account the report is from.
+    // The code from /link tells the bot which Discord account the report is from.
     fun report(category: String, ign: String, reason: String) {
         val body = JsonObject().apply {
             addProperty("category", category)

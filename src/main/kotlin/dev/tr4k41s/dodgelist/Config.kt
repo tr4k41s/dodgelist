@@ -26,7 +26,7 @@ object Config {
         try {
             if (Files.exists(file)) {
                 val json = JsonParser.parseString(Files.readString(file)).asJsonObject
-                json.get("url")?.asString?.let { url = it.removeSuffix("/").removeSuffix("/dodgelist") }
+                json.get("url")?.asString?.takeIf { it.isNotBlank() }?.let { url = it.removeSuffix("/").removeSuffix("/dodgelist") }
                 json.get("autokick")?.asBoolean?.let { autokick = it }
                 json.get("autokickShares")?.asBoolean?.let { autokickShares = it }
                 json.get("code")?.asString?.let { code = it }
@@ -38,8 +38,9 @@ object Config {
     }
 
     private fun save() {
+        // The URL is only saved when it was changed, so a new default reaches existing installs.
         val json = JsonObject().apply {
-            addProperty("url", url)
+            if (url != DEFAULT_URL) addProperty("url", url)
             addProperty("autokick", autokick)
             addProperty("autokickShares", autokickShares)
             addProperty("code", code)
