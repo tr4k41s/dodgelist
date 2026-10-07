@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "dodgelist",
+  "version": "${version}",
+  "name": "DodgeList",
+  "description": "Warns you when a player on the dodge list joins your party.",
+  "authors": ["tr4k41s"],
+  "contact": {
+    "sources": "https://github.com/tr4k41s/dodgelist"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "dev.tr4k41s.dodgelist.DodgeList"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*"
+  }
+}

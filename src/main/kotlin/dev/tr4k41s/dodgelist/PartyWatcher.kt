@@ -1,0 +1,68 @@
+package dev.tr4k41s.dodgelist
+
+import net.minecraft.ChatFormatting
+import net.minecraft.client.Minecraft
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.network.chat.Component
+import net.minecraft.sounds.SoundEvents
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
+object PartyWatcher {
+    private const val NAME = """(?:\[[^\]]+\] )?(\w{1,16})"""
+
+    private val singleName = listOf(
+        Regex("""^Party Finder > $NAME joined the (?:dungeon )?group!.*$"""),
+        Regex("""^$NAME joined the party\.$"""),
+        Regex("""^You have joined $NAME's party!$"""),
+    )
+    private val nameLists = listOf(
+        Regex("""^You'll be partying with: (.+)$"""),
+        Regex("""^Party (?:Leader|Moderators|Members): (.+)$"""),
+    )
+    private val listedName = Regex("""^$NAME$""")
+
+    private const val REPEAT_AFTER_MS = 10 * 60 * 1000L
+    private val warned = ConcurrentHashMap<UUID, Long>()
+
+    fun reset() = warned.clear()
+
+    fun onMessage(text: String) {
+        val names = mutableListOf<String>()
+        singleName.firstNotNullOfOrNull { it.matchEntire(text) }?.let { names += it.groupValues[1] }
+        nameLists.firstNotNullOfOrNull { it.matchEntire(text) }?.let { match ->
+            match.groupValues[1].split('●', ',')
+                .mapNotNull { listedName.matchEntire(it.trim())?.groupValues?.get(1) }
+                .forEach { names += it }
+        }
+
+        val self = Minecraft.getInstance().user.name
+        names.filterNot { it.equals(self, ignoreCase = true) }.distinct().forEach(::check)
+    }
+
+    private fun check(name: String) {
+        Profiles.resolve(name).thenAccept { uuid ->
+            val entry = uuid?.let { ListStore[it] } ?: return@thenAccept
+            val now = System.currentTimeMillis()
+            val last = warned[entry.uuid]
+            if (last != null && now - last < REPEAT_AFTER_MS) return@thenAccept
+            warned[entry.uuid] = now
+            Minecraft.getInstance().execute { warn(name, entry) }
+        }
+    }
+
+    private fun warn(name: String, entry: Entry) {
+        val mc = Minecraft.getInstance()
+        val message = Component.empty()
+            .append(Component.literal("[DodgeList] ").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD))
+            .append(Component.literal(name).withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
+            .append(Component.literal(" is on the dodge list!").withStyle(ChatFormatting.RED))
+        if (entry.reason.isNotBlank()) {
+            message.append(Component.literal("\nReason: ${entry.reason}").withStyle(ChatFormatting.GRAY))
+        }
+        mc.gui.chat.addClientSystemMessage(message)
+        mc.gui.setTitle(Component.literal("⚠ $name").withStyle(ChatFormatting.RED))
+        mc.gui.setSubtitle(Component.literal("is on the dodge list").withStyle(ChatFormatting.GRAY))
+        mc.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_PLING, 0.5f))
+    }
+}
