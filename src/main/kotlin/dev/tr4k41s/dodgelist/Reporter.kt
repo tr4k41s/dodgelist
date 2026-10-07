@@ -7,41 +7,25 @@ import net.minecraft.client.Minecraft
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.security.SecureRandom
 import java.time.Duration
-import java.util.HexFormat
-import java.util.concurrent.CompletableFuture
 
 object Reporter {
-    private val random = SecureRandom()
-
-    // The bot verifies who sent the report by asking Mojang whether this account just
-    // "joined" serverId, the same check a Minecraft server does when you log in.
+    // The bot files the report under the Discord account verified with this username.
     fun report(category: String, ign: String, reason: String) {
-        val mc = Minecraft.getInstance()
-        val user = mc.user
-        val serverId = HexFormat.of().formatHex(ByteArray(20).also(random::nextBytes))
+        val body = JsonObject().apply {
+            addProperty("category", category)
+            addProperty("ign", ign)
+            addProperty("reason", reason)
+            addProperty("reporter", Minecraft.getInstance().user.name)
+        }
+        val request = HttpRequest.newBuilder(URI.create(Config.reportUrl))
+            .timeout(Duration.ofSeconds(30))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+            .build()
 
         Messages.send("Sending report for $ign...")
-        CompletableFuture
-            .runAsync {
-                mc.services().sessionService().joinServer(user.profileId, user.accessToken, serverId)
-            }
-            .thenCompose {
-                val body = JsonObject().apply {
-                    addProperty("category", category)
-                    addProperty("ign", ign)
-                    addProperty("reason", reason)
-                    addProperty("reporter", user.name)
-                    addProperty("serverId", serverId)
-                }
-                val request = HttpRequest.newBuilder(URI.create(Config.reportUrl))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                    .build()
-                ListStore.http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            }
+        ListStore.http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
             .thenAccept { response ->
                 val message = runCatching {
                     JsonParser.parseString(response.body()).asJsonObject.get("message").asString

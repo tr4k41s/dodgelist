@@ -31,7 +31,7 @@ Autokick only works when you can kick (party leader or moderator).
 - The warning says which list (F7, M7) the player is on, and whether they were marked as an
   account share.
 - Each player only triggers a warning once every 10 minutes.
-- Reports are sent with a Mojang session check so the bot knows which account sent them.
+- Reports are filed under the Discord account you verified with, so verify in the Discord first.
 
 Settings are saved in `config/dodgelist.json`.
 
